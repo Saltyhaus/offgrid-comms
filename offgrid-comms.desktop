@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=OffGrid Comms
+Comment=HF mail (Mercury), Reticulum HF and mesh control panel
+Exec=@APP_DIR@/run.sh
+Icon=@APP_DIR@/assets/icon.png
+Terminal=false
+Categories=HamRadio;Network;
+# GTK window on Wayland: matches the app id (net.ag7jc.OffGridComms).
+# The old Tk window used Offgridcomms.
+StartupWMClass=net.ag7jc.OffGridComms
