@@ -25,6 +25,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
+import mercury_check
 from process_manager import ManagedProcess
 
 HERE = Path(__file__).resolve().parent
@@ -79,6 +80,11 @@ class SystemsPage:
         self.busy = set()
         self.status = {}          # key -> (row, light)
         self._temp_rigctld = None
+        self._ver = None              # (light, subtitle, mismatch) once checked
+        self._ver_key = None          # (binary, mtime): re-ask -V only when the binary changes
+        self._ver_checked = 0         # last home check (monotonic)
+        self._ver_running = False
+        self._ver_warned = False
 
     # ------------------------------------------------------------ layout
 
@@ -106,7 +112,7 @@ class SystemsPage:
         g = Adw.PreferencesGroup(title="Status")
         for key, title in (("rigctld", "rigctld"), ("mercury", "Mercury"), ("connector", "mercury-connector"),
                            ("modem73", "modem73"), ("rnsd", "rnsd"), ("meshchatx", "MeshChatX"),
-                           ("anytone", "Anytone TNC")):
+                           ("anytone", "Anytone TNC"), ("mercury_version", "Mercury version")):
             row = Adw.ActionRow(title=title, subtitle="…")
             light = self.Light()
             row.add_prefix(light)
@@ -165,12 +171,55 @@ class SystemsPage:
         }
         rn = getattr(self.w.lights.get("rnsd"), "_color", "gray")
         items["rnsd"] = (rn == "green", {"green": "up", "red": "not running"}.get(rn, "unknown"))
+        self._check_mercury_version()
         bound = self.w.anytone.is_bound()
         items["anytone"] = (bound, f"bound to {self.w.anytone.device_path}" if bound else "not bound")
         for key, (on, text) in items.items():
             row, light = self.status[key]
             light.set_color("green" if on else ("red" if text == "not running" else "gray"))
             row.set_subtitle(text)
+        row, light = self.status["mercury_version"]
+        if self._ver:
+            light.set_color(self._ver[0])
+            row.set_subtitle(self._ver[1])
+        else:
+            row.set_subtitle("checking…")
+
+    # ------------------------------------------------------------ Mercury version
+
+    VERSION_RECHECK = 15 * 60        # home's version, at most this often
+
+    def _check_mercury_version(self):
+        """Compare this machine's Mercury with home's. In the background, on
+        start, then every 15 minutes or as soon as the binary changes."""
+        if self._ver_running:
+            return
+        mc = self.w.cfg["mercury"]
+        binary = self.w.stack._find_bin(mc.get("binary", "mercury"), ["~/mercury/mercury", "/usr/bin/mercury"])
+        try:
+            key = (binary, os.path.getmtime(os.path.expanduser(binary)))
+        except (OSError, TypeError):
+            key = (binary, None)
+        if key == self._ver_key and time.monotonic() - self._ver_checked < self.VERSION_RECHECK:
+            return
+        self._ver_running = True
+        url = mc.get("home_status_url", "")
+        home_name = (mc.get("peers") or ["home"])[0]
+
+        def work():
+            local = mercury_check.binary_version(binary)
+            home = mercury_check.home_version(url)
+            GLib.idle_add(self._version_checked, key, mercury_check.summarize(local, home, home_name))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _version_checked(self, key, result):
+        self._ver_running = False
+        self._ver_key, self._ver_checked, self._ver = key, time.monotonic(), result
+        if result[2] and not self._ver_warned:
+            self._ver_warned = True
+            self.w.toast("Mercury here doesn't match home's -- see Systems")
+            self.w._log(f"[ui] Mercury version: {result[1]}")
+        return False
 
     def _refresh_setup(self, radio):
         s = self.setup[radio]

@@ -131,6 +131,9 @@ DEFAULT_CONFIG = {
         "field_stations": [],         # your other portables, e.g. ["N0CALL-2", "N0CALL-3"]
         "binary": "mercury",
         "connector_binary": str(Path.home() / "mercury-connector" / "mercury-connector"),
+        # home's published status (e.g. the hf-contact.json its website serves),
+        # to check this Mercury matches home's version. Empty = no check.
+        "home_status_url": "",
         "audio_device": "plughw:CARD=Device,DEV=0",
         "base_port": 8300,
         "extra_args": ["-G"],
