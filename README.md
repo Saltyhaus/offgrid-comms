@@ -11,7 +11,7 @@ It runs on a laptop and a touchscreen tablet (GNOME, Wayland) with the same code
 - **HF Mail**: a chat-style inbox over Mercury and mercury-connector. Short reports and replies go to your home station, and through home to your other portable stations. Optional GPS position, quick messages, and a warning before anything queued goes out on the air.
 - **HF switch, OFF | MERCURY | RETICULUM**: only one program has the HF radio at a time. Mercury is HF mail; Reticulum is rigctld + modem73.
 - **Mesh**: start and stop MeshChatX, bind an Anytone AT-D890UV's built-in Bluetooth KISS TNC for Reticulum on VHF/UHF, and watch `rnstatus`.
-- **Systems**: one tap between saved DATA and VOICE setups on the FT-991A or KX3 (through [radio-profile](https://github.com/Saltyhaus/radio-profile)), a sound-card level check for Mercury, and the status of every part of the stack.
+- **Systems**: one tap between saved DATA and VOICE setups on the FT-991A or KX3 (through [radio-profile](https://github.com/Saltyhaus/radio-profile)), a sound-card level check for Mercury, the status of every part of the stack, and whether your Mercury matches home's version (different versions don't connect).
 - A status strip that's always visible: Mercury, connector, link, TX, new message, modem73, rnsd, plus SNR and speed while linked.
 - While anything HF is running, the machine won't suspend on its own, so a transmission isn't cut off.
 
@@ -55,6 +55,7 @@ Then edit `~/.config/offgrid-comms/config.json`:
 | `mercury.peers` | the home station your connector calls, e.g. `["N0CALL"]` |
 | `mercury.field_stations` | your other portable stations, so you can message them through home |
 | `anytone.mac` | the radio's Bluetooth address (`bluetoothctl devices`) |
+| `mercury.home_status_url` | optional: your home station's published status (e.g. its website's `hf-contact.json`), so the Systems tab can warn when this Mercury doesn't match home's version |
 
 Start it from the app grid, or the first time from a terminal to see any errors:
 
@@ -92,7 +93,7 @@ mercury-connector carries them. Whatever runs at home decides what to do with th
 
 - **The radio is live.** Anything in the outbox goes out as soon as Mercury and the connector are up, so the app asks first when there is.
 - Old window: `OGC_UI=tk ./run.sh`, or `"ui_toolkit": "tk"` in the config.
-- Tests: `python3 -m unittest test_systems_page`
+- Tests: `python3 -m unittest test_systems_page test_mercury_check`
 
 ## License
 
